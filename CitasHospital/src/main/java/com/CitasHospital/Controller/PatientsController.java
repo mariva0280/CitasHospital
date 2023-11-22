@@ -1,6 +1,7 @@
 package com.CitasHospital.Controller;
 
 import com.CitasHospital.Controller.Inputs.PatientsInput;
+import com.CitasHospital.Exception.InvalidDniException;
 import com.CitasHospital.Exception.PatientsExistException;
 import com.CitasHospital.Service.PatientsService;
 import io.swagger.annotations.ApiOperation;
@@ -22,20 +23,17 @@ public class PatientsController {
     @Autowired
     private PatientsService patientsService;
     @ApiOperation(value = "Adding new patient")
-    @ApiResponses(value = {
-            @ApiResponse(code = 201,message = "Patient added successfully."),
-            @ApiResponse(code = 226, message = "Patient already exists in data base.")
-    })
 
     @PostMapping("/patients")
     public ResponseEntity<String>addPatients(
-            @ApiParam(value = "Information about patient", required = true)
             @Valid @RequestBody PatientsInput patientsInput){
         try{
             patientsService.addPatients(patientsInput);
             return ResponseEntity.status(HttpStatus.CREATED).body("Patient added successfully");
+        }catch (InvalidDniException e){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }catch (PatientsExistException e){
-            return ResponseEntity.status(HttpStatus.IM_USED).body("Patient already exists in data base.");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
     }
 }

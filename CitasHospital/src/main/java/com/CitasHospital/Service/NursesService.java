@@ -2,10 +2,12 @@ package com.CitasHospital.Service;
 
 import com.CitasHospital.Controller.Inputs.NursesAppointmentsInput;
 import com.CitasHospital.Controller.Inputs.NursesInput;
+import com.CitasHospital.Controller.Outputs.NursesAppointmentsOutput;
 import com.CitasHospital.Domain.Doctors;
 import com.CitasHospital.Domain.Nurses;
 import com.CitasHospital.Domain.NursesAppointments;
 import com.CitasHospital.Exception.*;
+import com.CitasHospital.Repository.DoctorsRepository;
 import com.CitasHospital.Repository.NursesAppointmentsRepository;
 import com.CitasHospital.Repository.NursesRepository;
 import com.CitasHospital.Repository.PatientsRepository;
@@ -25,12 +27,20 @@ public class NursesService {
     @Autowired
     private PatientsRepository patientsRepository;
     @Autowired
+    private DoctorsRepository doctorsRepository;
+    @Autowired
     private NursesAppointmentsRepository nursesAppointmentsRepository;
     @Autowired
     private SchedulesService schedulesService;
     private static final int appointmentInterval = 5;
 
-    public void addNurses(NursesInput nursesInput) throws NursesExistException{
+    public void addNurses(NursesInput nursesInput) throws NursesExistException,InvalidDniException{
+        if (patientsRepository.existsById(nursesInput.getDni())) {
+            throw new InvalidDniException("DNI is already in use by a patient.");
+        }
+        if(doctorsRepository.existsById(nursesInput.getDni())){
+            throw new InvalidDniException("DNI is already in use by a doctor.");
+        }
         if(nursesRepository.existsById(nursesInput.getDni())) {
             throw new NursesExistException("Nurse already exists.");
         }
@@ -104,7 +114,7 @@ public class NursesService {
         nursesAppointmentsRepository.save(appointment);
 
     }
-    public List<Map<String,Object>> getAvailableSlotsForNurse(Nurses nurse, LocalDate startDate) throws InvalidTimeException,EmptyListException {
+    public List<Map<String,Object>> getAvailableSlotsForNurse(Nurses nurse, LocalDate startDate) throws InvalidTimeException{
         List<Map<String,Object>> availableSlotsPerDayList = new ArrayList<>();
 
         // Validar si la fecha está dentro del "time window" válido
@@ -141,7 +151,7 @@ public class NursesService {
 
         return availableSlotsPerDayList;
     }
-    public List<NursesAppointments> getAppointmentsForPatientOnDayNurses(String dniPatients, LocalDate days) throws PatientsDoesntExistsException, EmptyListException,InvalidTimeException {
+    public List<NursesAppointmentsOutput> getAppointmentsForPatientOnDayNurses(String dniPatients, LocalDate days) throws PatientsDoesntExistsException, EmptyListException,InvalidTimeException {
         if(!patientsRepository.existsById(dniPatients)) throw new PatientsDoesntExistsException("Patient doesn't exist");
 
         List<LocalDate>timeWindow = schedulesService.getTimeWindow(LocalDate.now());
@@ -150,14 +160,13 @@ public class NursesService {
         }
 
         List<NursesAppointments> listAppointmentsForPatientOnDay = nursesAppointmentsRepository.findByDniPatientsAndDaysOrderByHours(dniPatients, days);
+
         if(listAppointmentsForPatientOnDay.isEmpty()) throw new EmptyListException("The appointments list for this patient is empty");
-        return listAppointmentsForPatientOnDay;
+        List<NursesAppointmentsOutput> appointmentsOutputDayNurseList = new ArrayList<>();
+        for(NursesAppointments appointment : listAppointmentsForPatientOnDay){
+            appointmentsOutputDayNurseList.add(NursesAppointmentsOutput.getAppointmentsNurses(appointment));
+        }
+        return appointmentsOutputDayNurseList;
     }
-    /*public List<NursesAppointments>getAppointmentsForNursesByWeek(String dniNurses) throws NursesDoesntExistsException, EmptyListException {
-        if(!nursesRepository.existsById(dniNurses)) throw new NursesDoesntExistsException("Nurse doesn't exist");
-        List<NursesAppointments> listAppointmentsForNursesByWeek = nursesAppointmentsRepository.findByDniNursesOrderByDaysAscHoursAsc(dniNurses);
-        listAppointmentsForNursesByWeek.sort(Comparator.comparing(NursesAppointments::getDays).thenComparing(NursesAppointments::getHours));
-        if(listAppointmentsForNursesByWeek.isEmpty()) throw new EmptyListException("The appointments list for this doctor is empty");
-        return listAppointmentsForNursesByWeek;
-    }*/
+
 }

@@ -2,9 +2,9 @@ package com.CitasHospital.Controller;
 
 import com.CitasHospital.Controller.Inputs.NursesAppointmentsInput;
 import com.CitasHospital.Controller.Inputs.NursesInput;
+import com.CitasHospital.Controller.Outputs.NursesAppointmentsOutput;
 import com.CitasHospital.Domain.Doctors;
 import com.CitasHospital.Domain.Nurses;
-import com.CitasHospital.Domain.NursesAppointments;
 import com.CitasHospital.Exception.*;
 import com.CitasHospital.Repository.NursesRepository;
 import com.CitasHospital.Service.NursesService;
@@ -27,8 +27,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.springframework.format.annotation.DateTimeFormat.ISO.DATE;
-
-
 @RestController
 
 public class NursesController {
@@ -40,75 +38,59 @@ public class NursesController {
     private SchedulesService schedulesService;
 
     @ApiOperation(value = "Adding new nurse")
-    @ApiResponses(value = {
-            @ApiResponse(code = 201, message = "Nurse added successfully"),
-            @ApiResponse(code = 226, message = "Nurse already exists in data base.")
-    })
 
     @PostMapping("/nurses")
     public ResponseEntity<String>addNurses(
-            @ApiParam(value = "Information about add nurse", required = true)
             @Valid @RequestBody NursesInput nursesInput){
         try{
             nursesService.addNurses(nursesInput);
             return ResponseEntity.status(HttpStatus.CREATED).body("Nurse added successfully");
-        }catch (NursesExistException e) {
-            return ResponseEntity.status(HttpStatus.IM_USED).body("Nurse already exists in data base.");
+        }catch (InvalidDniException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }catch (NursesExistException e){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
-
     }
     @ApiOperation(value = "Adding new schedule")
     @ApiResponses(value = {
-            @ApiResponse(code = 201,message = "Hour added successfully"),
-            @ApiResponse(code = 400, message = "Nurse doesn't exist in data base"),
-            @ApiResponse(code= 408, message = "Invalid time"),
-            @ApiResponse(code = 409, message = "Nurse already has a schedule assigned")
+            @ApiResponse(code = 200,message = "Nurses schedule added successfully")
     })
 
     @PostMapping("nurses/{dni}/add-schedule/{startTime}/{endTime}")
-    public ResponseEntity<Nurses> addScheduleNurses(@Valid @PathVariable String dni, @Valid @RequestParam LocalTime startTime, @Valid @RequestParam LocalTime endTime){
+    public ResponseEntity<Nurses> addScheduleNurses(@Valid @PathVariable String dni, @Valid @PathVariable LocalTime startTime, @Valid @PathVariable LocalTime endTime) throws
+            NursesDoesntExistsException, InvalidTimeException,NurseScheduleConflictException {
         try{
             nursesService.addScheduleNurses(dni, startTime,endTime);
             return  ResponseEntity.status(HttpStatus.CREATED).build();
         }catch (NursesDoesntExistsException e){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            throw e;
         }catch (InvalidTimeException e){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            throw e;
         }catch (NurseScheduleConflictException e){
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            throw e;
         }
-
     }
     @ApiOperation(value = "Updating nurse schedule for the next time window")
     @ApiResponses(value = {
-            @ApiResponse(code = 200, message = "Nurse schedule updated successfully"),
-            @ApiResponse(code = 400, message = "Nurse doesn't exist in data base"),
-            @ApiResponse(code = 408, message = "Invalid time"),
-            @ApiResponse(code = 409, message = "Nurse doesn't have a schedule assigned yet")
+            @ApiResponse(code = 200, message = "Nurse schedule updated successfully")
     })
     @PutMapping("nurses/{dni}/update-schedule/{startTime}/{endTime}")
     public ResponseEntity<Doctors> updateDoctorSchedule(
             @Valid @PathVariable String dni,
             @Valid @RequestParam LocalTime startTime,
-            @Valid @RequestParam LocalTime endTime) {
+            @Valid @RequestParam LocalTime endTime) throws NursesDoesntExistsException,InvalidTimeException,NurseScheduleConflictException {
         try {
             nursesService.updateScheduleNurse(dni, startTime, endTime);
             return ResponseEntity.status(HttpStatus.CREATED).build();
         } catch (NursesDoesntExistsException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            throw e;
         } catch (InvalidTimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            throw e;
         } catch (NurseScheduleConflictException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            throw e;
         }
     }
     @ApiOperation(value = "Adding a new appointment for a nurse")
-    @ApiResponses(value = {
-            @ApiResponse(code = 201, message = "Appointment added successfully."),
-            @ApiResponse(code = 404, message = "Patient or nurse doesn't exist in the database."),
-            @ApiResponse(code = 400, message = "Appointment validation hours and week failed."),
-            @ApiResponse(code = 409, message  ="Appointment exists or isn't in the correct interval or the nurse's schedule isn't add")
-    })
     @PostMapping("/nurses/{dni}/appointments")
     public ResponseEntity<String> addNursesAppointment(
 
@@ -117,65 +99,52 @@ public class NursesController {
             nursesService.addNurseAppointment(appointmentsInput);
             return ResponseEntity.status(HttpStatus.CREATED).body("Appointment added successfully");
         }catch (PatientsDoesntExistsException e){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Patient doesn't exist in the database");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }catch (NursesDoesntExistsException e){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Nurse doesn't exist in the database");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }catch (InvalidTimeException e){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("The appointment must be scheduled for the next week.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }catch (NurseScheduleConflictException e){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("The appointment is outside the nurse's working hours.");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }catch (AppointmentExistsException e){
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("There is already an appointment scheduled at the requested time.");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }catch (InvalidAppointmentIntervalException e){
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("There is already an appointment scheduled within 10 minutes of the requested time.");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }catch (WorkersScheduleNotSetException e){
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Nurse's schedule is not set yet. Please set the nurse's schedule before adding appointments.");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
     }
     @ApiOperation(value = "Check available slots for nurses.")
-    @ApiResponses(value = {
-            @ApiResponse(code = 201, message = "These are the spaces available."),
-            @ApiResponse(code = 404, message = "Nurse doesn't exist in the database."),
-            @ApiResponse(code = 400, message = "The consult is outside the time window.")
-    })
     @GetMapping("nurses/{dni}/available-slots")
     public ResponseEntity<List<Map<String,Object>>> getAvailableSlotsForNurse(
             @PathVariable String dni,
-            @RequestParam(name = "startDate") @DateTimeFormat(iso = DATE) LocalDate startDate){
+            @RequestParam(name = "startDate") @DateTimeFormat(iso = DATE) LocalDate startDate) throws InvalidTimeException,NursesDoesntExistsException{
         try {
             Nurses nurse = nursesRepository.findById(dni).orElse(null);
             if(nurse == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                throw new NursesDoesntExistsException("Nurse doesn't exist in data base");
             }
 
             List<Map<String,Object>> availableSlotsPerDayList = nursesService.getAvailableSlotsForNurse(nurse, startDate);
-
             return ResponseEntity.ok(availableSlotsPerDayList);
-        } catch (EmptyListException e) {
-            return ResponseEntity.badRequest().body(Collections.emptyList());
         }catch (InvalidTimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            throw e;
         }
     }
     @ApiOperation(value = "Consult appointments of patient per day ordered by hours.")
-    @ApiResponses(value = {
-            @ApiResponse(code = 201, message = "These are the appointments for patient."),
-            @ApiResponse(code = 404, message = "Patient doesn't exist in the database."),
-            @ApiResponse(code = 400, message = "The appointments list for this patient is empty or is outside of time window.")
-    })
     @GetMapping("nurses/appointments/patients/{dniPatients}/{days}")
-    public ResponseEntity<List<NursesAppointments>>getAppointmentsForPatientOnDayNurses(
+    public ResponseEntity<List<NursesAppointmentsOutput>>getAppointmentsForPatientOnDayNurses(
             @ApiParam(value = "Dni of the patient", required = true) @Valid @PathVariable String dniPatients,
-            @DateTimeFormat(iso = DATE) @Valid @PathVariable LocalDate days){
+            @DateTimeFormat(iso = DATE) @Valid @PathVariable LocalDate days) throws PatientsDoesntExistsException,EmptyListException,InvalidTimeException{
         try{
-            List<NursesAppointments> appointmentsList = nursesService.getAppointmentsForPatientOnDayNurses(dniPatients, days);
+            List<NursesAppointmentsOutput> appointmentsList = nursesService.getAppointmentsForPatientOnDayNurses(dniPatients, days);
             return ResponseEntity.ok(appointmentsList);
         }catch (PatientsDoesntExistsException e){
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            throw e;
         }catch (EmptyListException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            throw e;
         }catch (InvalidTimeException e){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            throw e;
         }
     }
 }

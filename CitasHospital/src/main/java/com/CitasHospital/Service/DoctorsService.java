@@ -2,11 +2,13 @@ package com.CitasHospital.Service;
 
 import com.CitasHospital.Controller.Inputs.DoctorsAppointmentsInput;
 import com.CitasHospital.Controller.Inputs.DoctorsInput;
+import com.CitasHospital.Controller.Outputs.DoctorsAppointmentsOutput;
 import com.CitasHospital.Domain.Doctors;
 import com.CitasHospital.Domain.DoctorsAppointments;
 import com.CitasHospital.Exception.*;
 import com.CitasHospital.Repository.DoctorsAppointmentsRepository;
 import com.CitasHospital.Repository.DoctorsRepository;
+import com.CitasHospital.Repository.NursesRepository;
 import com.CitasHospital.Repository.PatientsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,21 +27,31 @@ public class DoctorsService {
     @Autowired
     private PatientsRepository patientsRepository;
     @Autowired
+    private NursesRepository nursesRepository;
+    @Autowired
     private DoctorsAppointmentsRepository doctorsAppointmentsRepository;
     @Autowired
     private SchedulesService schedulesService;
 
     private static final  int appointmentInterval = 5;
+    //metodo para añadir doctors, comprobando si el dni ya existe en la base de datos como paciente,nurse or doctor, para evitar duplicidades.
+    public void addDoctors(DoctorsInput doctorsInput) throws DoctorsExistException,InvalidDniException{
 
-
-    public void addDoctors(DoctorsInput doctorsInput) throws DoctorsExistException {
+        if (patientsRepository.existsById(doctorsInput.getDni())) {
+            throw new InvalidDniException("DNI is already in use by a patient.");
+        }
+        if(nursesRepository.existsById(doctorsInput.getDni())){
+            throw new InvalidDniException("DNI is already in use by a nurse.");
+        }
         if(doctorsRepository.existsById(doctorsInput.getDni())) {
             throw new DoctorsExistException("Doctor already exists.");
         }
         Doctors doctor = Doctors.getDoctors(doctorsInput);
         doctorsRepository.save(doctor);
     }
-    // metodo para configurar horario agenda doctores
+    /*
+    metodo para añadir horario de atención doctors, comprobando si el doctor ya está dado de alta, si ya tiene un horario asignado, no deja tener horario nulo.
+     */
     public void addScheduleDoctors(String dni, LocalTime startTime, LocalTime endTime) throws DoctorsDoesntExistsExcpetion, InvalidTimeException,DoctorScheduleConflictException {
         Doctors doctor = doctorsRepository.findById(dni).orElse(null);
         if(doctor == null) {
@@ -55,7 +67,9 @@ public class DoctorsService {
         doctor.addSchedule(startTime,endTime);
         doctorsRepository.save(doctor);
     }
-    //metodo para actualizar horario de atencion cuando cambiamos de time window.
+    /*metodo para actualizar horario de atencion cuando cambiamos de time window,como no he podido manejar el time window en el metodo anterior he creado este metodo
+    para cuando cambiemos de semana pueda actualizar el horario de atención.
+     */
     public void updateScheduleDoctor(String dni, LocalTime startTime, LocalTime endTime) throws DoctorsDoesntExistsExcpetion,InvalidTimeException,DoctorScheduleConflictException{
         Doctors doctor = doctorsRepository.findById(dni).orElse(null);
         if(doctor == null){
@@ -66,11 +80,16 @@ public class DoctorsService {
         }
         if (doctor.getStartTime() == null || doctor.getEndTime() == null) {
             // El doctor no tiene un horario de atención asignado
-            throw new DoctorScheduleConflictException("Doctor with DNI " + dni + " does not have a schedule assgined yet.");
+            throw new DoctorScheduleConflictException("Doctor with DNI " + dni + " does not have a schedule assigned yet.");
         }
         doctor.addSchedule(startTime,endTime);
         doctorsRepository.save(doctor);
     }
+    /*
+    metodo para crear una cita con el doctor,comprobando si el paciente existe, si el doctor existe, comprueba si el horario de atención del doctor ya esta añadido
+    comprueba que estamos en la ventana de tiempo correcta, comprueba que la hora elegida está dentro del horario de atención,comprueba si la cita ya existe para
+    ese dia y hora, comprueba el intervalo entre citas,y por ultimo crea la cita.
+     */
     public void addDoctorAppointment(DoctorsAppointmentsInput doctorAppointmentsInput) throws DoctorsDoesntExistsExcpetion, PatientsDoesntExistsException, AppointmentExistsException, InvalidTimeException,DoctorScheduleConflictException,InvalidAppointmentIntervalException,
             WorkersScheduleNotSetException {
 
@@ -108,7 +127,11 @@ public class DoctorsService {
         DoctorsAppointments appointment = DoctorsAppointments.getAppointmentsDoctors(doctorAppointmentsInput);
         doctorsAppointmentsRepository.save(appointment);
     }
-    public List<Map<String,Object>> getAvailableSlotsForDoctor(Doctors doctor, LocalDate startDate) throws InvalidTimeException,EmptyListException{
+    /*
+    consulta huecos libres en la agenda del doctor para la ventana temporal.
+     */
+    public List<Map<String,Object>> getAvailableSlotsForDoctor(Doctors doctor, LocalDate startDate) throws InvalidTimeException{
+
         List<Map<String,Object>> availableSlotsPerDayList = new ArrayList<>();
         //obtener las horas de trabajo del medico
         // Validar si la fecha está dentro del "time window" válido
@@ -128,7 +151,7 @@ public class DoctorsService {
                 // Ignorar los fines de semana
                 List<LocalTime> hoursOfDay = schedulesService.getHoursList(startTime, endTime);
 
-                // Obtener las citas de la enfermera por día
+                // Obtener las citas del doctor por día
                 List<DoctorsAppointments> appointmentsForDay = doctorsAppointmentsRepository
                         .findByDniDoctorsAndDaysOrderByHours(doctor.getDni(), date);
 
@@ -146,23 +169,66 @@ public class DoctorsService {
         return availableSlotsPerDayList;
 
     }
-    public List<DoctorsAppointments> getAppointmentsForPatientOnDayDoctors(String dniPatients, LocalDate days) throws PatientsDoesntExistsException, EmptyListException,InvalidTimeException {
+    /*
+    consulta las citas que tiene un paciente con el doctor para un dia determinado por horas,yo lo he puesto que compruebe las citas dentro de la venta temporal
+    en la que se pueden pedir las citas puesto que entiendo que se quiere consultar las citas futuras y no las citas pasadas.Comprueba tambien si el paciente no
+    tiene citas.
+     */
+    public List<DoctorsAppointmentsOutput> getAppointmentsForPatientOnDayDoctors(String dniPatients, LocalDate days) throws PatientsDoesntExistsException, EmptyListException,InvalidTimeException {
         if(!patientsRepository.existsById(dniPatients)) throw new PatientsDoesntExistsException("Patient doesn't exist");
         List<LocalDate>timeWindow = schedulesService.getTimeWindow(LocalDate.now());
         if(!timeWindow.contains(days)){
             throw new InvalidTimeException("Invalid day for the consult.");
         }
         List<DoctorsAppointments> listAppointmentsForPatientOnDay = doctorsAppointmentsRepository.findByDniPatientsAndDaysOrderByHours(dniPatients, days);
-        if(listAppointmentsForPatientOnDay.isEmpty()) throw new EmptyListException("The appointments list for this patient is empty");
-        return listAppointmentsForPatientOnDay;
+        if(listAppointmentsForPatientOnDay.isEmpty()){
+            throw new EmptyListException("The appointments list for this patient is empty");
+        }
+        List<DoctorsAppointmentsOutput> appointmentsOutputDayDoctorList = new ArrayList<>();
+        for(DoctorsAppointments appointment : listAppointmentsForPatientOnDay){
+            appointmentsOutputDayDoctorList.add(DoctorsAppointmentsOutput.getAppointmentsDoctors(appointment));
+        }
+        return appointmentsOutputDayDoctorList;
     }
-    public List<DoctorsAppointments>getAppointmentsForDoctorsByWeek(String dniDoctors) throws DoctorsDoesntExistsExcpetion, EmptyListException {
-        if(!doctorsRepository.existsById(dniDoctors)) throw new DoctorsDoesntExistsExcpetion("Doctor doesn't exist");
-        List<DoctorsAppointments> listAppointmentsForDoctorsByWeek = doctorsAppointmentsRepository.findByDniDoctorsOrderByDaysAscHoursAsc(dniDoctors);
-        listAppointmentsForDoctorsByWeek.sort(Comparator.comparing(DoctorsAppointments::getDays).thenComparing(DoctorsAppointments::getHours));
-        if(listAppointmentsForDoctorsByWeek.isEmpty()) throw new EmptyListException("The appointments list for this doctor is empty");
-        return listAppointmentsForDoctorsByWeek;
+    /*
+    consulta las citas que tiene un doctor para toda la semana ordenado por dia y horas, comprobando si el doctor consultado existe, si la lista está vacia o no,
+    y solo consulta las citas dentro de la ventana de tiempo.
+     */
+    public List<DoctorsAppointmentsOutput> getAppointmentsForDoctorsByWeek(String dniDoctors) throws DoctorsDoesntExistsExcpetion,EmptyListException {
+        if (!doctorsRepository.existsById(dniDoctors)) {
+            throw new DoctorsDoesntExistsExcpetion("Doctor doesn't exist.");
+        }
+
+        // Obtener el rango de tiempo válido (la "semana" o "timeWindow")
+        List<LocalDate> timeWindow = schedulesService.getTimeWindow(LocalDate.now());
+
+        // Obtener las citas dentro de la semana actual (o el rango de tiempo deseado)
+        List<DoctorsAppointments> listAppointmentsForDoctorsByWeek = new ArrayList<>();
+        for (LocalDate day : timeWindow) {
+            List<DoctorsAppointments> appointmentsForDay = doctorsAppointmentsRepository
+                    .findByDniDoctorsAndDaysOrderByHours(dniDoctors, day);
+            listAppointmentsForDoctorsByWeek.addAll(appointmentsForDay);
+        }
+
+        // Ordenar las citas por días y horas
+        listAppointmentsForDoctorsByWeek.sort(Comparator.comparing(DoctorsAppointments::getDays)
+                .thenComparing(DoctorsAppointments::getHours));
+
+        if (listAppointmentsForDoctorsByWeek.isEmpty()) {
+            throw new EmptyListException("The appointments list for this doctor is empty.");
+        }
+
+        List<DoctorsAppointmentsOutput> appointmentOutputDoctorWeekList = new ArrayList<>();
+        for (DoctorsAppointments appointment : listAppointmentsForDoctorsByWeek) {
+            appointmentOutputDoctorWeekList.add(DoctorsAppointmentsOutput.getAppointmentsDoctors(appointment));
+        }
+
+        return appointmentOutputDoctorWeekList;
     }
+    /*
+    consulta los medicos más ocupados en la ventana temporal.
+     */
+
     public List<Map<String,Object>> getMostOccupiedDoctorsInTimeWindow(LocalDate startDate) throws InvalidTimeException {
         List<LocalDate> timeWindow = schedulesService.getTimeWindow(LocalDate.now());
 

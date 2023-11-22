@@ -1,22 +1,17 @@
-package com.CitasHospital.Controller.Inputs;
+package com.CitasHospital.Controller.Outputs;
 
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.CitasHospital.Domain.DoctorsAppointments;
+import lombok.Data;
 
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.time.LocalTime;
-
-@Getter
-@Setter
-@NoArgsConstructor
-
-public class DoctorsAppointmentsInput {
-    @NotNull(message = "Id cannot be null")
+@Data
+public class DoctorsAppointmentsOutput {
+   /* @NotNull(message = "Id cannot be null")
     @NotEmpty(message = "Id cannot be empty")
-    private String id;
+    private String id;*/
     @NotNull(message = "Dni patients cannot be null")
     @NotEmpty(message = "Dni patients cannot be empty")
     private String dniPatients;
@@ -29,11 +24,15 @@ public class DoctorsAppointmentsInput {
 
     private LocalTime hours;
 
-    public DoctorsAppointmentsInput(String dniPatients, String dniDoctors, LocalDate days, LocalTime hours) {
-        this.id = null;
+    public DoctorsAppointmentsOutput(String dniPatients, String dniDoctors, LocalDate days, LocalTime hours) {
+        //this.id = id;
         this.dniPatients = dniPatients;
         this.dniDoctors = dniDoctors;
         this.days = days;
         this.hours = hours;
+    }
+    public static DoctorsAppointmentsOutput getAppointmentsDoctors(DoctorsAppointments doctorsAppointments){
+        return new DoctorsAppointmentsOutput(doctorsAppointments.getDniPatients(), doctorsAppointments.getDniDoctors(),
+                doctorsAppointments.getDays(),doctorsAppointments.getHours());
     }
 }

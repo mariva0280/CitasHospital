@@ -1,16 +1,15 @@
-package com.CitasHospital.Controller.Inputs;
+package com.CitasHospital.Controller.Outputs;
 
+import com.CitasHospital.Domain.NursesAppointments;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.time.LocalTime;
 @Data
-@NoArgsConstructor
 
-public class NursesAppointmentsInput {
+public class NursesAppointmentsOutput {
     @NotNull(message = "Id cannot be null")
     @NotEmpty(message = "Id cannot be empty")
     private String id;
@@ -22,15 +21,20 @@ public class NursesAppointmentsInput {
     private String dniNurses;
     @NotNull(message = "Date cannot be null")
     private LocalDate days;
-
     @NotNull(message = "Time cannot be null")
+
     private LocalTime hours;
 
-    public NursesAppointmentsInput(String dniPatients, String dniNurses, LocalDate days, LocalTime hours) {
+    public NursesAppointmentsOutput(String id, String dniPatients, String dniNurses, LocalDate days, LocalTime hours) {
         this.id = null;
         this.dniPatients = dniPatients;
         this.dniNurses = dniNurses;
         this.days = days;
         this.hours = hours;
+    }
+
+    public static NursesAppointmentsOutput getAppointmentsNurses(NursesAppointments nursesAppointments){
+        return new NursesAppointmentsOutput(nursesAppointments.getId(), nursesAppointments.getDniPatients(), nursesAppointments.getDniNurses(),
+                nursesAppointments.getDays(),nursesAppointments.getHours());
     }
 }
