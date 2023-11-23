@@ -22,13 +22,7 @@ public class PatientsService {
     @Autowired
     private NursesRepository nursesRepository;
 
-    public void addPatients(PatientsInput patientsInput) throws PatientsExistException,InvalidDniException {
-        if(doctorsRepository.existsById(patientsInput.getDni())) {
-            throw new InvalidDniException("DNI is already in use by a doctor.");
-        }
-        if(nursesRepository.existsById(patientsInput.getDni())) {
-            throw new InvalidDniException("DNI is already in use by a nurse.");
-        }
+    public void addPatients(PatientsInput patientsInput) throws PatientsExistException {
         if(patientsRepository.existsById(patientsInput.getDni())) {
             throw new PatientsExistException("Patient already exists.");
         }

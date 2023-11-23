@@ -30,8 +30,6 @@ public class PatientsController {
         try{
             patientsService.addPatients(patientsInput);
             return ResponseEntity.status(HttpStatus.CREATED).body("Patient added successfully");
-        }catch (InvalidDniException e){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }catch (PatientsExistException e){
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
