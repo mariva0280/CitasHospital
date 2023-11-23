@@ -52,7 +52,7 @@ public class DoctorsService {
     /*
     metodo para añadir horario de atención doctors, comprobando si el doctor ya está dado de alta, si ya tiene un horario asignado, no deja tener horario nulo.
      */
-    public void addScheduleDoctors(String dni, LocalTime startTime, LocalTime endTime) throws DoctorsDoesntExistsExcpetion, InvalidTimeException,DoctorScheduleConflictException {
+    public void addScheduleDoctors(String dni, LocalTime startTime, LocalTime endTime) throws DoctorsDoesntExistsExcpetion,DoctorScheduleConflictException {
         Doctors doctor = doctorsRepository.findById(dni).orElse(null);
         if(doctor == null) {
             throw new DoctorsDoesntExistsExcpetion ("The doctor whit dni " + dni + " doesn't exists.");
@@ -61,22 +61,17 @@ public class DoctorsService {
             // El doctor ya tiene un horario de atención asignado
             throw new DoctorScheduleConflictException("Doctor with DNI " + dni + " already has a schedule assigned.");
         }
-        if (startTime == null || endTime==null) {
-            throw new InvalidTimeException("The start time and end time object cannot be null.");
-        }
+
         doctor.addSchedule(startTime,endTime);
         doctorsRepository.save(doctor);
     }
     /*metodo para actualizar horario de atencion cuando cambiamos de time window,como no he podido manejar el time window en el metodo anterior he creado este metodo
     para cuando cambiemos de semana pueda actualizar el horario de atención.
      */
-    public void updateScheduleDoctor(String dni, LocalTime startTime, LocalTime endTime) throws DoctorsDoesntExistsExcpetion,InvalidTimeException,DoctorScheduleConflictException{
+    public void updateScheduleDoctor(String dni, LocalTime startTime, LocalTime endTime) throws DoctorsDoesntExistsExcpetion,DoctorScheduleConflictException{
         Doctors doctor = doctorsRepository.findById(dni).orElse(null);
         if(doctor == null){
             throw new DoctorsDoesntExistsExcpetion("The doctor whit dni " + dni + " doesn't exists.");
-        }
-        if (startTime == null || endTime==null) {
-            throw new InvalidTimeException("The start time and end time object cannot be null.");
         }
         if (doctor.getStartTime() == null || doctor.getEndTime() == null) {
             // El doctor no tiene un horario de atención asignado
@@ -112,7 +107,7 @@ public class DoctorsService {
         if(doctorAppointmentsInput.getHours().isBefore(doctor.getStartTime()) || doctorAppointmentsInput.getHours().isAfter(doctor.getEndTime())){
             throw new DoctorScheduleConflictException("The appointment is outside the doctor's working hours");
         }
-        //comprueba si la cita existe para ese dia y hora
+        // comprueba si la cita existe para ese dia y hora
         if (doctorsAppointmentsRepository.existsByDniDoctorsAndDaysAndHours(doctorAppointmentsInput.getDniDoctors(),
                 doctorAppointmentsInput.getDays(), doctorAppointmentsInput.getHours())){
             throw new AppointmentExistsException("There is already an appointment scheduled at the requested time with this doctor.");
@@ -167,7 +162,6 @@ public class DoctorsService {
             }
         }
         return availableSlotsPerDayList;
-
     }
     /*
     consulta las citas que tiene un paciente con el doctor para un dia determinado por horas,yo lo he puesto que compruebe las citas dentro de la venta temporal
@@ -209,10 +203,6 @@ public class DoctorsService {
                     .findByDniDoctorsAndDaysOrderByHours(dniDoctors, day);
             listAppointmentsForDoctorsByWeek.addAll(appointmentsForDay);
         }
-
-        // Ordenar las citas por días y horas
-        listAppointmentsForDoctorsByWeek.sort(Comparator.comparing(DoctorsAppointments::getDays)
-                .thenComparing(DoctorsAppointments::getHours));
 
         if (listAppointmentsForDoctorsByWeek.isEmpty()) {
             throw new EmptyListException("The appointments list for this doctor is empty.");

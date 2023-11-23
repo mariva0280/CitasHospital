@@ -34,7 +34,6 @@ public class PatientsService {
         }
         Patients patient = Patients.getPatients(patientsInput);
         patientsRepository.save(patient);
-
     }
 
 }

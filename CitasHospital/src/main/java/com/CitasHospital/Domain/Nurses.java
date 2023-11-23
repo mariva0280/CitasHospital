@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.Entity;
+import javax.validation.constraints.NotNull;
 import java.time.LocalTime;
 
 
@@ -14,6 +15,7 @@ import java.time.LocalTime;
 public class Nurses extends Workers{
 
     private LocalTime startTime;
+
     private LocalTime endTime;
 
     public Nurses(String name, String dni, int numColeg) {

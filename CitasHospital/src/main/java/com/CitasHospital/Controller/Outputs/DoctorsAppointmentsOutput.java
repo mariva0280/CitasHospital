@@ -9,9 +9,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 @Data
 public class DoctorsAppointmentsOutput {
-   /* @NotNull(message = "Id cannot be null")
-    @NotEmpty(message = "Id cannot be empty")
-    private String id;*/
     @NotNull(message = "Dni patients cannot be null")
     @NotEmpty(message = "Dni patients cannot be empty")
     private String dniPatients;
@@ -25,7 +22,6 @@ public class DoctorsAppointmentsOutput {
     private LocalTime hours;
 
     public DoctorsAppointmentsOutput(String dniPatients, String dniDoctors, LocalDate days, LocalTime hours) {
-        //this.id = id;
         this.dniPatients = dniPatients;
         this.dniDoctors = dniDoctors;
         this.days = days;

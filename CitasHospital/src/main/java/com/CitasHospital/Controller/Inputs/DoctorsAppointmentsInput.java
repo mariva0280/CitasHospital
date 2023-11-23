@@ -26,7 +26,6 @@ public class DoctorsAppointmentsInput {
     @NotNull(message = "Date cannot be null")
     private LocalDate days;
     @NotNull(message = "Time cannot be null")
-
     private LocalTime hours;
 
     public DoctorsAppointmentsInput(String dniPatients, String dniDoctors, LocalDate days, LocalTime hours) {

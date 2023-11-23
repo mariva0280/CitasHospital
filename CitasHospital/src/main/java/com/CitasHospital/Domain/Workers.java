@@ -26,7 +26,9 @@ public class Workers {
     @Min(value = 1 , message = ("The membership number must be greater than or equal to 1"))
     @Max(value = 999999, message =("The membership number must be less thar or equal to 999999"))
     private int numColeg;
+
     private LocalTime startTime;
+
     private LocalTime endTime;
 
 

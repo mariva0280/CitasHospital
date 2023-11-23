@@ -40,4 +40,5 @@ public class SchedulesService {
 
         return hoursList;
     }
+
 }

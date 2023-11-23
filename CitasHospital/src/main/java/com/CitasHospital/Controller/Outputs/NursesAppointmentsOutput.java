@@ -10,9 +10,6 @@ import java.time.LocalTime;
 @Data
 
 public class NursesAppointmentsOutput {
-    @NotNull(message = "Id cannot be null")
-    @NotEmpty(message = "Id cannot be empty")
-    private String id;
     @NotNull(message = "Dni patients cannot be null")
     @NotEmpty(message = "Dni patients cannot be empty")
     private String dniPatients;
@@ -22,11 +19,9 @@ public class NursesAppointmentsOutput {
     @NotNull(message = "Date cannot be null")
     private LocalDate days;
     @NotNull(message = "Time cannot be null")
-
     private LocalTime hours;
 
-    public NursesAppointmentsOutput(String id, String dniPatients, String dniNurses, LocalDate days, LocalTime hours) {
-        this.id = null;
+    public NursesAppointmentsOutput( String dniPatients, String dniNurses, LocalDate days, LocalTime hours) {
         this.dniPatients = dniPatients;
         this.dniNurses = dniNurses;
         this.days = days;
@@ -34,7 +29,7 @@ public class NursesAppointmentsOutput {
     }
 
     public static NursesAppointmentsOutput getAppointmentsNurses(NursesAppointments nursesAppointments){
-        return new NursesAppointmentsOutput(nursesAppointments.getId(), nursesAppointments.getDniPatients(), nursesAppointments.getDniNurses(),
+        return new NursesAppointmentsOutput(nursesAppointments.getDniPatients(), nursesAppointments.getDniNurses(),
                 nursesAppointments.getDays(),nursesAppointments.getHours());
     }
 }

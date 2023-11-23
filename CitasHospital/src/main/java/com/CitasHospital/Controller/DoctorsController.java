@@ -57,13 +57,11 @@ public class DoctorsController {
     })
     @PostMapping("doctors/{dni}/add-schedule/{startTime}/{endTime}")
     public ResponseEntity<Doctors> addScheduleDoctors(@Valid @PathVariable String dni,@Valid @PathVariable LocalTime startTime, @Valid @PathVariable LocalTime endTime) throws
-            DoctorsDoesntExistsExcpetion, InvalidTimeException, DoctorScheduleConflictException {
+            DoctorsDoesntExistsExcpetion,DoctorScheduleConflictException {
         try{
             doctorsService.addScheduleDoctors(dni, startTime, endTime);
             return  ResponseEntity.status(HttpStatus.CREATED).build();
         }catch (DoctorsDoesntExistsExcpetion e){
-            throw e;
-        }catch (InvalidTimeException e){
             throw e;
         }catch (DoctorScheduleConflictException e){
             throw e;
@@ -77,15 +75,13 @@ public class DoctorsController {
     public ResponseEntity<Doctors> updateDoctorSchedule(
             @Valid @PathVariable String dni,
             @Valid @RequestParam LocalTime startTime,
-            @Valid @RequestParam LocalTime endTime) throws DoctorsDoesntExistsExcpetion,InvalidTimeException,DoctorScheduleConflictException {
+            @Valid @RequestParam LocalTime endTime) throws DoctorsDoesntExistsExcpetion,DoctorScheduleConflictException {
         try {
             doctorsService.updateScheduleDoctor(dni, startTime, endTime);
             return ResponseEntity.status(HttpStatus.CREATED).build();
         } catch (DoctorsDoesntExistsExcpetion e) {
             throw e;
-        } catch (InvalidTimeException e) {
-            throw e;
-        } catch (DoctorScheduleConflictException e) {
+        }catch (DoctorScheduleConflictException e) {
             throw e;
         }
     }
